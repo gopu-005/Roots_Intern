@@ -1,7 +1,6 @@
 streamlit
+streamlit_prophet
 pandas
 matplotlib
 openpyxl
 fpdf
-cmdstanpy
-git+https://github.com/facebook/prophet.git
