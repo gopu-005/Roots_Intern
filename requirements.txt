@@ -1,6 +1,6 @@
-streamlit
-streamlit_prophet
+streamlit>=1.32.0
 pandas
 matplotlib
-openpyxl
+scikit-learn
 fpdf
+openpyxl
