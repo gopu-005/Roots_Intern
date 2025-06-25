@@ -9,19 +9,222 @@ import os
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
+# Custom CSS for better styling
+def load_css():
+    st.markdown("""
+    <style>
+    /* Main container styling */
+    .main {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+    }
+    
+    /* Title styling */
+    .main-title {
+        color: white;
+        text-align: center;
+        font-size: 3rem;
+        font-weight: bold;
+        margin-bottom: 2rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    /* Card styling */
+    .metric-card {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 1.5rem;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        margin: 1rem 0;
+        transition: transform 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    .metric-title {
+        font-size: 1.1rem;
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #3498db;
+        margin: 0;
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+    }
+    
+    .css-1d391kg .css-1v0mbdj {
+        color: white;
+    }
+    
+    /* Sidebar text styling */
+    .css-1d391kg .stSelectbox label {
+        color: white !important;
+        font-weight: 600;
+    }
+    
+    .css-1d391kg .stSlider label {
+        color: white !important;
+        font-weight: 600;
+    }
+    
+    .css-1d391kg .stMarkdown {
+        color: white !important;
+    }
+    
+    /* Select box styling */
+    .stSelectbox > div > div {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 10px;
+        border: 2px solid #3498db;
+    }
+    
+    /* Select box text */
+    .stSelectbox > div > div > div {
+        color: #2c3e50 !important;
+        font-weight: 600;
+    }
+    
+    /* Main selectbox styling */
+    div[data-testid="stSelectbox"] > div > div {
+        background: rgba(255, 255, 255, 0.95);
+        color: #2c3e50 !important;
+        border-radius: 10px;
+        border: 2px solid #3498db;
+    }
+    
+    /* Sidebar toggle button */
+    .css-1544g2n {
+        background: #3498db;
+        color: white;
+        border-radius: 50%;
+        padding: 0.5rem;
+    }
+    
+    /* Hamburger menu styling */
+    .sidebar-toggle {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 999;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .sidebar-toggle:hover {
+        background: #2980b9;
+        transform: scale(1.1);
+    }
+    
+    /* Recommendation card styling */
+    .recommendation-card {
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        border-left: 5px solid;
+    }
+    
+    .recommendation-positive {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-left-color: #28a745;
+        color: #155724;
+    }
+    
+    .recommendation-negative {
+        background: linear-gradient(135deg, #f8d7da 0%, #f1c2c7 100%);
+        border-left-color: #dc3545;
+        color: #721c24;
+    }
+    
+    .recommendation-neutral {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        border-left-color: #ffc107;
+        color: #856404;
+    }
+    
+    .recommendation-title {
+        font-size: 1.3rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .recommendation-text {
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+    
+    /* Chart container */
+    .chart-container {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        margin: 2rem 0;
+    }
+    
+    /* Download button styling */
+    .stDownloadButton > button {
+        background: linear-gradient(45deg, #3498db, #2980b9);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    
+    .stDownloadButton > button:hover {
+        background: linear-gradient(45deg, #2980b9, #3498db);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # Load and clean the data
+@st.cache_data
 def load_data():
-    df = pd.read_excel("new dataset.xlsx", skiprows=1)
-    df = df.rename(columns={
-        'Unnamed: 2': 'Date',
-        'Unnamed: 3': 'Description',
-        'Unnamed: 4': 'CategoryCode',
-        'Unnamed: 5': 'DepartmentCode',
-        'Unnamed: 6': 'LocationCode',
-        'Unnamed: 7': 'qty',
-        'Unnamed: 8': 'TaxableAmount'
-    })
-    df['Date'] = pd.to_datetime(df['Date'])
+    df = pd.read_excel("veyr dataset.xlsx")
+    df.columns = [col.strip() for col in df.columns]
+    
+    if 'Date' not in df.columns:
+        df = df.rename(columns={
+            df.columns[2]: 'Date',
+            df.columns[3]: 'Description',
+            df.columns[4]: 'CategoryCode',
+            df.columns[5]: 'DepartmentCode',
+            df.columns[6]: 'LocationCode',
+            df.columns[7]: 'qty',
+            df.columns[8]: 'TaxableAmount'
+        })
+
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+    df.dropna(subset=['Date'], inplace=True)
     return df
 
 def get_top_products(df, top_n=75):
@@ -63,424 +266,584 @@ def forecast_sales(df, product_name, freq):
     df_forecast = pd.concat([df[['ds', 'y']].rename(columns={'y': 'yhat'}), forecast_df], ignore_index=True)
     return model, df_forecast, df[['ds', 'y']]
 
+def analyze_trend_and_recommend(actual_df, forecast_df):
+    """Analyze sales trend and provide stock recommendations"""
+    if len(actual_df) < 2:
+        return "neutral", "Insufficient data for analysis", "⚠️"
+    
+    # Calculate trend
+    recent_sales = actual_df['y'].iloc[-min(3, len(actual_df)):].mean()
+    earlier_sales = actual_df['y'].iloc[:-min(3, len(actual_df))].mean() if len(actual_df) > 3 else actual_df['y'].iloc[0]
+    
+    trend_change = ((recent_sales - earlier_sales) / earlier_sales * 100) if earlier_sales > 0 else 0
+    
+    # Get future forecast average
+    future_forecast = forecast_df[forecast_df['ds'] > actual_df['ds'].max()]
+    avg_future_sales = future_forecast['yhat'].mean() if not future_forecast.empty else 0
+    
+    # Recommendation logic
+    if trend_change > 20 and avg_future_sales > recent_sales:
+        return "positive", f"📈 **STRONG BUY SIGNAL**: Sales trending upward by {trend_change:.1f}%. Forecast shows continued growth. Recommended action: **Increase stock by 25-30%**. Expected future sales: {avg_future_sales:.0f} units.", "🟢"
+    elif trend_change > 10 and avg_future_sales > recent_sales * 0.8:
+        return "positive", f"📊 **MODERATE BUY**: Sales growing by {trend_change:.1f}%. Forecast indicates stable demand. Recommended action: **Maintain current stock levels with 15% buffer**. Expected future sales: {avg_future_sales:.0f} units.", "🟢"
+    elif trend_change < -20 or avg_future_sales < recent_sales * 0.6:
+        return "negative", f"📉 **CAUTION**: Sales declining by {abs(trend_change):.1f}%. Forecast shows continued decline. Recommended action: **Reduce stock by 20-25%** to avoid overstock. Expected future sales: {avg_future_sales:.0f} units.", "🔴"
+    elif trend_change < -10:
+        return "negative", f"⚠️ **MONITOR CLOSELY**: Sales declining by {abs(trend_change):.1f}%. Forecast shows potential stabilization. Recommended action: **Reduce stock by 10-15%** and monitor weekly. Expected future sales: {avg_future_sales:.0f} units.", "🟡"
+    else:
+        return "neutral", f"📊 **STABLE DEMAND**: Sales relatively stable with {trend_change:.1f}% change. Forecast shows consistent demand. Recommended action: **Maintain current stock levels**. Expected future sales: {avg_future_sales:.0f} units.", "🟡"
+
+def clean_text_for_pdf(text):
+    """Remove emojis and special characters that can't be encoded in latin-1"""
+    import re
+    # Remove emojis and special characters
+    text = re.sub(r'[^\x00-\x7F]+', ' ', text)
+    # Remove extra whitespace
+    text = ' '.join(text.split())
+    return text
+
+def get_product_analysis(df, product_name, freq):
+    """Get detailed analysis for a single product"""
+    product_df = df[df['Description'] == product_name].copy()
+    
+    if product_df.empty:
+        return None
+    
+    # Group by frequency to get monthly/quarterly data
+    product_df = product_df.set_index('Date').resample(freq)['qty'].sum().reset_index()
+    product_df.columns = ['Date', 'qty']
+    product_df.dropna(inplace=True)
+    
+    if len(product_df) < 2:
+        return None
+    
+    total_units = product_df['qty'].sum()
+    
+    # Find highest and lowest sold periods
+    highest_idx = product_df['qty'].idxmax()
+    lowest_idx = product_df['qty'].idxmin()
+    
+    highest_sold = product_df.loc[highest_idx, 'qty']
+    lowest_sold = product_df.loc[lowest_idx, 'qty']
+    highest_month = product_df.loc[highest_idx, 'Date'].strftime('%Y-%m')
+    lowest_month = product_df.loc[lowest_idx, 'Date'].strftime('%Y-%m')
+    
+    # Calculate trend for suggestion
+    recent_sales = product_df['qty'].iloc[-min(3, len(product_df)):].mean()
+    earlier_sales = product_df['qty'].iloc[:-min(3, len(product_df))].mean() if len(product_df) > 3 else product_df['qty'].iloc[0]
+    trend_change = ((recent_sales - earlier_sales) / earlier_sales * 100) if earlier_sales > 0 else 0
+    
+    # Generate suggestion
+    if trend_change > 15:
+        suggestion = "Increase Stock"
+    elif trend_change < -15:
+        suggestion = "Reduce Stock"
+    else:
+        suggestion = "Maintain Current Stock"
+    
+    return {
+        'product_name': product_name,
+        'total_units': int(total_units),
+        'highest_sold': int(highest_sold),
+        'highest_month': highest_month,
+        'lowest_sold': int(lowest_sold),
+        'lowest_month': lowest_month,
+        'suggestion': suggestion
+    }
+
+def generate_comprehensive_pdf_report(df, location, category, freq):
+    """Generate comprehensive PDF report for all products in the category"""
+    from fpdf import FPDF
+    
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=16)
+    
+    # Title
+    title = f"{location} - {category}" if location != 'ALL' else f"ALL LOCATIONS - {category}"
+    pdf.cell(200, 15, txt=title, ln=True, align='C')
+    pdf.ln(10)
+    
+    # Table headers
+    pdf.set_font("Arial", size=10)
+    pdf.cell(40, 10, "Product Name", 1, 0, 'C')
+    pdf.cell(25, 10, "Total Units", 1, 0, 'C')
+    pdf.cell(25, 10, "Highest Sold", 1, 0, 'C')
+    pdf.cell(25, 10, "High Month", 1, 0, 'C')
+    pdf.cell(25, 10, "Lowest Sold", 1, 0, 'C')
+    pdf.cell(25, 10, "Low Month", 1, 0, 'C')
+    pdf.cell(35, 10, "Stock Suggestion", 1, 1, 'C')
+    
+    # Get all products in the category
+    products = sorted(df['Description'].unique())
+    
+    for product in products:
+        analysis = get_product_analysis(df, product, freq)
+        if analysis:
+            # Check if we need a new page
+            if pdf.get_y() > 250:
+                pdf.add_page()
+                # Repeat headers
+                pdf.set_font("Arial", size=10)
+                pdf.cell(40, 10, "Product Name", 1, 0, 'C')
+                pdf.cell(25, 10, "Total Units", 1, 0, 'C')
+                pdf.cell(25, 10, "Highest Sold", 1, 0, 'C')
+                pdf.cell(25, 10, "High Month", 1, 0, 'C')
+                pdf.cell(25, 10, "Lowest Sold", 1, 0, 'C')
+                pdf.cell(25, 10, "Low Month", 1, 0, 'C')
+                pdf.cell(35, 10, "Stock Suggestion", 1, 1, 'C')
+            
+            # Add product data
+            pdf.set_font("Arial", size=8)
+            product_name = clean_text_for_pdf(analysis['product_name'])[:25]  # Truncate long names
+            pdf.cell(40, 10, product_name, 1, 0, 'L')
+            pdf.cell(25, 10, f"{analysis['total_units']:,}", 1, 0, 'C')
+            pdf.cell(25, 10, f"{analysis['highest_sold']:,}", 1, 0, 'C')
+            pdf.cell(25, 10, analysis['highest_month'], 1, 0, 'C')
+            pdf.cell(25, 10, f"{analysis['lowest_sold']:,}", 1, 0, 'C')
+            pdf.cell(25, 10, analysis['lowest_month'], 1, 0, 'C')
+            pdf.cell(35, 10, analysis['suggestion'], 1, 1, 'C')
+    
+    # Add summary at the end
+    pdf.ln(10)
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, f"Total Products Analyzed: {len(products)}", ln=True)
+    pdf.cell(200, 10, f"Report Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
+    
+    # FIXED: Return the PDF as BytesIO object
+    try:
+        pdf_output = pdf.output(dest='S')
+        return BytesIO(pdf_output.encode('latin-1'))
+    except UnicodeEncodeError:
+        # Fallback for encoding issues
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt=f"Sales Report - {title}", ln=True, align='C')
+        pdf.cell(200, 10, txt=f"Report generated successfully for {len(products)} products", ln=True)
+        pdf_output = pdf.output(dest='S')
+        return BytesIO(pdf_output.encode('latin-1'))
+
 def generate_pdf_report(product_name, summary, fig):
+    """Generate individual product PDF report"""
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt=f"Sales Forecast Report - {product_name}", ln=True, align='C')
+    
+    # Clean the product name
+    clean_product_name = clean_text_for_pdf(product_name)
+    pdf.cell(200, 10, txt=f"Sales Forecast Report - {clean_product_name}", ln=True, align='C')
     pdf.ln(10)
+    
+    # Clean all summary values
     for key, value in summary.items():
-        pdf.cell(200, 10, txt=f"{key}: {value}", ln=True)
+        clean_key = clean_text_for_pdf(str(key))
+        clean_value = clean_text_for_pdf(str(value))
+        # Split long lines
+        if len(f"{clean_key}: {clean_value}") > 80:
+            pdf.cell(200, 10, txt=f"{clean_key}:", ln=True)
+            # Split value into multiple lines if too long
+            words = clean_value.split()
+            line = ""
+            for word in words:
+                if len(line + word) < 70:
+                    line += word + " "
+                else:
+                    pdf.cell(200, 10, txt=f"  {line.strip()}", ln=True)
+                    line = word + " "
+            if line.strip():
+                pdf.cell(200, 10, txt=f"  {line.strip()}", ln=True)
+        else:
+            pdf.cell(200, 10, txt=f"{clean_key}: {clean_value}", ln=True)
+    
+    # Add chart
     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
         fig.savefig(tmpfile.name, format="png", dpi=150, bbox_inches='tight')
         tmpfile_path = tmpfile.name
-    pdf.image(tmpfile_path, x=10, y=80, w=190)
+    
+    # Adjust image position based on text length
+    pdf.image(tmpfile_path, x=10, y=pdf.get_y() + 10, w=190)
     os.remove(tmpfile_path)
-    pdf_bytes = pdf.output(dest='S').encode('latin-1')
-    return BytesIO(pdf_bytes)
-
-# Mobile-responsive CSS
-def add_mobile_styles():
-    st.markdown("""
-    <style>
-        /* Mobile-first responsive design */
-        @media (max-width: 768px) {
-            .main .block-container {
-                padding: 1rem 0.5rem !important;
-                max-width: 100% !important;
-            }
-            
-            /* Responsive title */
-            h1 {
-                font-size: 1.5rem !important;
-                text-align: center !important;
-                margin-bottom: 1rem !important;
-            }
-            
-            /* Mobile sidebar */
-            .css-1d391kg {
-                width: 100% !important;
-            }
-            
-            /* Responsive metrics */
-            .metric-container {
-                display: flex !important;
-                flex-direction: column !important;
-                gap: 0.5rem !important;
-            }
-            
-            /* Full width selectboxes */
-            .stSelectbox > div > div {
-                width: 100% !important;
-            }
-            
-            /* Responsive text input */
-            .stTextInput > div > div > input {
-                width: 100% !important;
-            }
-            
-            /* Chart container */
-            .chart-container {
-                width: 100% !important;
-                overflow-x: auto !important;
-            }
-            
-            /* Download button positioning */
-            .download-btn {
-                width: 100% !important;
-                margin: 1rem 0 !important;
-            }
-            
-            /* Responsive dataframe */
-            .dataframe {
-                font-size: 0.8rem !important;
-            }
-        }
-        
-        /* Hover effects for buttons */
-        .stDownloadButton > button:hover {
-            background-color: #1f77b4 !important;
-            color: white !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
-        }
-        
-        .stSelectbox > div > div:hover {
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-        }
-        
-        /* Custom metric cards */
-        .metric-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1rem;
-            border-radius: 8px;
-            text-align: center;
-            margin: 0.5rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .metric-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin: 0.5rem 0;
-        }
-        
-        .metric-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-        
-        /* Responsive search bar */
-        .search-container {
-            position: sticky;
-            top: 0;
-            background: white;
-            padding: 1rem 0;
-            z-index: 100;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        /* Loading spinner */
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-        }
-        
-        /* Forecast chart styling */
-        .forecast-chart {
-            background: white;
-            border-radius: 8px;
-            padding: 1rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin: 1rem 0;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-# Check if running on mobile device
-def is_mobile():
-    # This is a simple check - in real apps you might use user agent detection
-    return st.session_state.get('mobile_view', False)
-
-# Streamlit UI
-st.set_page_config(
-    page_title="Sales Forecasting Dashboard", 
-    layout="wide",
-    initial_sidebar_state="collapsed"  # Start with sidebar collapsed on mobile
-)
-
-# Add mobile styles
-add_mobile_styles()
-
-# Mobile-friendly header
-st.markdown("""
-    <div style="text-align: center; padding: 1rem 0;">
-        <h1>📊 Sales Forecasting Dashboard</h1>
-        <p style="color: #666; margin-top: -1rem;">Analyze and predict sales trends</p>
-    </div>
-""", unsafe_allow_html=True)
+    
+    # Generate PDF bytes
+    try:
+        pdf_output = pdf.output(dest='S')
+        return BytesIO(pdf_output.encode('latin-1'))
+    except UnicodeEncodeError:
+        # Fallback: create a simpler PDF if encoding fails
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt=f"Sales Forecast Report", ln=True, align='C')
+        pdf.ln(10)
+        pdf.cell(200, 10, txt=f"Product: {clean_text_for_pdf(product_name)}", ln=True)
+        pdf.cell(200, 10, txt=f"Report generated successfully", ln=True)
+        pdf_output = pdf.output(dest='S')
+        return BytesIO(pdf_output.encode('latin-1'))
 
 # Load and preprocess data
 @st.cache_data
 def load_and_process_data():
     df = load_data()
     df = df[df['CategoryCode'].str.lower() != 'vegetables']
-    df = get_top_products(df, top_n=75)
+    top_products = df.groupby('Description')['qty'].sum().sort_values(ascending=False).head(75).index.tolist()
+    df = df[df['Description'].isin(top_products)]
     return df
 
-# Loading indicator
-with st.spinner('Loading data...'):
-    df = load_and_process_data()
+# Main app
+st.set_page_config(page_title="Sales Forecasting Dashboard", layout="wide", initial_sidebar_state="expanded")
 
-# Mobile-optimized sidebar
+# Load custom CSS
+load_css()
+
+# Title
+st.markdown('<h1 class="main-title">📊 Sales Forecasting Dashboard</h1>', unsafe_allow_html=True)
+
+# Sidebar with custom styling and hamburger menu
+if 'sidebar_state' not in st.session_state:
+    st.session_state.sidebar_state = 'expanded'
+
+# Sidebar toggle button
+st.markdown("""
+<script>
+function toggleSidebar() {
+    const sidebar = document.querySelector('[data-testid="stSidebar"]');
+    if (sidebar.style.marginLeft === '-21rem') {
+        sidebar.style.marginLeft = '0';
+    } else {
+        sidebar.style.marginLeft = '-21rem';
+    }
+}
+</script>
+""", unsafe_allow_html=True)
+
 with st.sidebar:
-    st.markdown("### 🔍 Filters")
     
-    # Collapsible filter sections
-    with st.expander("📂 Category & Location", expanded=True):
-        category = st.selectbox(
-            "Category", 
-            sorted(df['CategoryCode'].dropna().unique()),
-            help="Select product category to analyze"
-        )
-        location = st.selectbox(
-            "Location", 
-            sorted(df['LocationCode'].dropna().unique()),
-            help="Choose store location"
-        )
+    st.markdown("### 🎛️ Control Panel")
     
-    with st.expander("📅 Date Grouping", expanded=True):
-        freq_option = st.selectbox(
-            "Grouping", 
-            ["Monthly", "Quarterly", "Yearly"],
-            help="How to group sales data over time"
-        )
+    with st.spinner("Loading data..."):
+        df = load_and_process_data()
+    
+    st.markdown("**📂 Category Selection**")
+    category = st.selectbox("Select Category", sorted(df['CategoryCode'].dropna().unique()), label_visibility="collapsed")
+    
+    st.markdown("**📍 Location Selection**") 
+    location_options = ['ALL'] + sorted(df['LocationCode'].dropna().unique())
+    location = st.selectbox("Select Location", location_options, label_visibility="collapsed")
+    
+    st.markdown("**📅 Frequency Selection**")
+    freq_option = st.selectbox("Select Frequency", ["Monthly", "Quarterly", "Yearly"], label_visibility="collapsed")
+    
+    # Additional filters
+    st.markdown("---")
+    st.markdown("**🔢 Analysis Settings**")
+    top_n_products = st.slider("Number of Top Products", min_value=10, max_value=100, value=75, step=5)
+    
+    # Comprehensive report download button
+    st.markdown("---")
+    st.markdown("**📋 Comprehensive Report**")
+    
+    # Filter data for comprehensive report
+    if location == 'ALL':
+        report_df = df[df['CategoryCode'] == category]
+    else:
+        report_df = df[(df['CategoryCode'] == category) & (df['LocationCode'] == location)]
+    
+    freq_map = {"Monthly": "MS", "Quarterly": "QS", "Yearly": "YS"}
+    freq = freq_map[freq_option]
+    
+    if st.button("📥 Download Category Report", type="primary"):
+        with st.spinner("Generating comprehensive report..."):
+            comprehensive_pdf = generate_comprehensive_pdf_report(report_df, location, category, freq)
+            report_title = f"{location}_{category}_Report.pdf" if location != 'ALL' else f"ALL_LOCATIONS_{category}_Report.pdf"
+            
+            st.download_button(
+                label="📄 Download Complete Report",
+                data=comprehensive_pdf,
+                file_name=report_title,
+                mime="application/pdf",
+                key="comprehensive_report"
+            )
 
-# Frequency mapping
+# Filter data based on selections
 freq_map = {"Monthly": "MS", "Quarterly": "QS", "Yearly": "YS"}
 freq = freq_map[freq_option]
 
-# Filter data
-filtered_df = df[(df['CategoryCode'] == category) & (df['LocationCode'] == location)]
-
-# Mobile-optimized metrics display
-total_qty = int(filtered_df['qty'].sum())
-total_tax = float(filtered_df['TaxableAmount'].sum())
-num_products = filtered_df['Description'].nunique()
-
-# Custom metric cards for mobile
-st.markdown("""
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1rem 0;">
-        <div class="metric-card">
-            <div class="metric-label">Total Quantity Sold</div>
-            <div class="metric-value">{:,}</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Total Revenue</div>
-            <div class="metric-value">₹{:,.2f}</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Products Available</div>
-            <div class="metric-value">{}</div>
-        </div>
-    </div>
-""".format(total_qty, total_tax, num_products), unsafe_allow_html=True)
-
-# Mobile-optimized search
-st.markdown('<div class="search-container">', unsafe_allow_html=True)
-search_term = st.text_input(
-    "🔍 Search Products", 
-    placeholder="Type product name...",
-    help="Search for specific products to forecast"
-)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Filter products based on search
-products = sorted(filtered_df['Description'].unique())
-if search_term:
-    products = [p for p in products if search_term.lower() in p.lower()]
-
-# Product selection with better mobile UX
-if not products:
-    st.warning("No products found matching your search criteria.")
+if location == 'ALL':
+    filtered_df = df[df['CategoryCode'] == category]
 else:
-    product_selected = st.selectbox(
-        "Select Product for Forecasting", 
-        products,
-        help="Choose a product to generate sales forecast"
-    )
+    filtered_df = df[(df['CategoryCode'] == category) & (df['LocationCode'] == location)]
 
-    if product_selected:
-        # Show loading state
-        with st.spinner(f'Generating forecast for {product_selected}...'):
-            model_result = forecast_sales(filtered_df, product_selected, freq)
+# Get top products based on slider
+top_products = filtered_df.groupby('Description')['qty'].sum().sort_values(ascending=False).head(top_n_products).index.tolist()
+filtered_df = filtered_df[filtered_df['Description'].isin(top_products)]
+
+products = sorted(filtered_df['Description'].unique())
+
+st.markdown("**🛍️ Product Selection**")
+product_selected = st.selectbox("Select Product", products, label_visibility="collapsed")
+
+if product_selected:
+    # Calculate overall metrics
+    product_data = filtered_df[filtered_df['Description'] == product_selected]
+    total_qty = product_data['qty'].sum()
+    total_amount = product_data['TaxableAmount'].sum()
+    avg_price = total_amount / total_qty if total_qty > 0 else 0
+    total_products = len(filtered_df['Description'].unique())
+    
+    # Display metrics cards
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">🛍️ Total Products</div>
+            <div class="metric-value">{total_products:,}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">📦 Total Quantity Sold</div>
+            <div class="metric-value">{total_qty:,}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">💰 Total Amount</div>
+            <div class="metric-value">₹{total_amount:,.0f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">💲 Average Price</div>
+            <div class="metric-value">₹{avg_price:.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Forecast analysis
+    model_result = forecast_sales(filtered_df, product_selected, freq)
+    if model_result:
+        model, forecast, actual_df = model_result
         
-        if model_result:
-            model, forecast, actual_df = model_result
+        # Create and display chart
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        # Styling the plot
+        ax.set_facecolor('#f8f9fa')
+        fig.patch.set_facecolor('#f8f9fa')
+        
+        # Plot data
+        ax.plot(actual_df['ds'], actual_df['y'], label='Actual Sales', marker='o', 
+                linewidth=3, markersize=8, color='#2980b9')
+        ax.plot(forecast['ds'], forecast['yhat'], label='Forecasted Sales', 
+                linestyle='--', marker='x', linewidth=3, markersize=8, color='#e74c3c')
+        ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], 
+                       alpha=0.3, color='#f39c12', label='Confidence Interval')
 
-            # Mobile-optimized chart
-            st.markdown('<div class="forecast-chart">', unsafe_allow_html=True)
-            
-            # Adjust figure size based on screen
-            fig_width = 12
-            fig_height = 6
-            
-            fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-            ax.plot(actual_df['ds'], actual_df['y'], label='Actual Sales', marker='o', linewidth=2)
-            ax.plot(forecast['ds'], forecast['yhat'], label='Forecasted Sales', linestyle='--', marker='x', linewidth=2)
-            ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], alpha=0.2, label='Confidence Interval')
-            
-            ax.set_title(f"Sales Forecast: {product_selected}", fontsize=14, fontweight='bold', pad=20)
-            ax.set_xlabel("Date", fontsize=12)
-            ax.set_ylabel("Quantity", fontsize=12)
-            ax.legend(loc='upper left', fontsize=10)
-            ax.grid(True, alpha=0.3)
-            ax.xaxis.set_major_formatter(DateFormatter('%Y-%m'))
-            
-            # Rotate x-axis labels for better mobile readability
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-            
-            st.pyplot(fig, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+        # Add value annotations
+        for i, row in actual_df.iterrows():
+            ax.annotate(f"{row['y']:.0f}", (row['ds'], row['y']), 
+                       textcoords="offset points", xytext=(0,10), ha='center', 
+                       fontsize=10, fontweight='bold', color='#2c3e50')
 
-            # PDF Download button in top right corner
-            col_spacer, col_download = st.columns([8, 2])
-            with col_download:
-                # Generate PDF report
-                summary = {
-                    "Product": product_selected,
-                    "Total Quantity Sold": f"{actual_df['y'].sum():,.0f}",
-                    "Date Range": f"{actual_df['ds'].min().date()} to {actual_df['ds'].max().date()}"
-                }
-                pdf_data = generate_pdf_report(product_selected, summary, fig)
+        # Highlight max and min points
+        if not actual_df.empty:
+            max_point = actual_df.loc[actual_df['y'].idxmax()]
+            min_point = actual_df.loc[actual_df['y'].idxmin()]
+            ax.annotate("📈 Peak", (max_point['ds'], max_point['y']), 
+                       textcoords="offset points", xytext=(0,20), ha='center', 
+                       fontsize=11, fontweight='bold', color='#27ae60',
+                       bbox=dict(boxstyle='round,pad=0.3', edgecolor='#27ae60', facecolor='white'))
+            # Continuing from the plotting section...
+        ax.annotate("📈 Peak", (max_point['ds'], max_point['y']), 
+                   textcoords="offset points", xytext=(0,20), ha='center', 
+                   fontsize=11, fontweight='bold', color='#27ae60',
+                   bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+        ax.annotate("📉 Low", (min_point['ds'], min_point['y']), 
+                   textcoords="offset points", xytext=(0,-30), ha='center', 
+                   fontsize=11, fontweight='bold', color='#e74c3c',
+                   bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
 
-                st.download_button(
-                    label="📄 Download Report",
-                    data=pdf_data,
-                    file_name=f"{product_selected.replace(' ', '_')}_forecast.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-
-            # Forecast Summary in center with large font
-            st.markdown("""
-                <div style="text-align: center; margin: 2rem 0;">
-                    <h2 style="font-size: 2rem; color: #333; margin-bottom: 1.5rem;">📊 Forecast Summary</h2>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Horizontal summary cards
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.markdown(f"""
-                    <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white; margin: 0.5rem;">
-                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">{len(product_selected.split())}</div>
-                        <div style="font-size: 1.1rem; opacity: 0.9;">Product Words</div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown(f"""
-                    <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 10px; color: white; margin: 0.5rem;">
-                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">{actual_df['y'].sum():,.0f}</div>
-                        <div style="font-size: 1.1rem; opacity: 0.9;">Total Quantity Sold</div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            with col3:
-                date_range_days = (actual_df['ds'].max() - actual_df['ds'].min()).days
-                st.markdown(f"""
-                    <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 10px; color: white; margin: 0.5rem;">
-                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">{date_range_days}</div>
-                        <div style="font-size: 1.1rem; opacity: 0.9;">Days of Data</div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            with col4:
-                st.markdown(f"""
-                    <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 10px; color: white; margin: 0.5rem;">
-                        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">{freq_option[0]}</div>
-                        <div style="font-size: 1.1rem; opacity: 0.9;">Forecast Type</div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-            # Business Intelligence Suggestions
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Calculate trend and generate suggestions
-            recent_sales = actual_df['y'].tail(3).mean()
+        # Styling
+        ax.set_xlabel('Date', fontsize=14, fontweight='bold', color='#2c3e50')
+        ax.set_ylabel('Quantity Sold', fontsize=14, fontweight='bold', color='#2c3e50')
+        ax.set_title(f'Sales Forecast for {product_selected}', fontsize=16, fontweight='bold', 
+                    color='#2c3e50', pad=20)
+        ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+        ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
+                 bbox_to_anchor=(0.02, 0.98))
+        
+        # Format x-axis dates
+        date_formatter = DateFormatter('%Y-%m')
+        ax.xaxis.set_major_formatter(date_formatter)
+        plt.xticks(rotation=45)
+        
+        # Improve layout
+        plt.tight_layout()
+        
+        st.pyplot(fig)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Analysis and recommendations
+        trend_type, recommendation, icon = analyze_trend_and_recommend(actual_df, forecast)
+        
+        # Display recommendation with custom styling
+        recommendation_class = f"recommendation-{trend_type}"
+        st.markdown(f"""
+        <div class="recommendation-card {recommendation_class}">
+            <div class="recommendation-title">{icon} Stock Recommendation</div>
+            <div class="recommendation-text">{recommendation}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Create summary for PDF
+        summary = {
+            "Product": product_selected,
+            "Category": category,
+            "Location": location if location != 'ALL' else 'All Locations',
+            "Analysis Period": f"{actual_df['ds'].min().strftime('%Y-%m')} to {actual_df['ds'].max().strftime('%Y-%m')}",
+            "Total Quantity Sold": f"{total_qty:,} units",
+            "Total Revenue": f"₹{total_amount:,.2f}",
+            "Average Price per Unit": f"₹{avg_price:.2f}",
+            "Highest Sales Month": f"{actual_df.loc[actual_df['y'].idxmax(), 'ds'].strftime('%Y-%m')} ({actual_df['y'].max():.0f} units)",
+            "Lowest Sales Month": f"{actual_df.loc[actual_df['y'].idxmin(), 'ds'].strftime('%Y-%m')} ({actual_df['y'].min():.0f} units)",
+            "Stock Recommendation": clean_text_for_pdf(recommendation)
+        }
+        
+        # Download individual product report
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("📥 Download Product Report", type="primary", use_container_width=True):
+                with st.spinner("Generating PDF report..."):
+                    pdf_buffer = generate_pdf_report(product_selected, summary, fig)
+                    st.download_button(
+                        label="📄 Download PDF Report",
+                        data=pdf_buffer,
+                        file_name=f"{product_selected.replace('/', '_')}_forecast_report.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+        
+        # Additional insights section
+        st.markdown("---")
+        st.markdown("### 📊 Additional Insights")
+        
+        # Create insights cards
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Sales trend card
+            recent_avg = actual_df['y'].iloc[-min(3, len(actual_df)):].mean()
             overall_avg = actual_df['y'].mean()
-            future_forecast_avg = forecast[forecast['ds'] > actual_df['ds'].max()]['yhat'].mean()
+            trend_pct = ((recent_avg - overall_avg) / overall_avg * 100) if overall_avg > 0 else 0
             
-            # Determine trend
-            if future_forecast_avg > recent_sales * 1.1:
-                trend = "increasing"
-                trend_icon = "📈"
-                trend_color = "#28a745"
-                suggestion = "**INCREASE STOCK** - Forecast shows strong upward trend. Consider increasing inventory by 15-20% to meet growing demand."
-                action = "Scale up manufacturing and ensure adequate raw materials."
-            elif future_forecast_avg < recent_sales * 0.9:
-                trend = "decreasing"
-                trend_icon = "📉"
-                trend_color = "#dc3545"
-                suggestion = "**REDUCE STOCK** - Forecast indicates declining demand. Consider reducing inventory by 10-15% to avoid overstocking."
-                action = "Optimize production schedule and consider promotional strategies."
-            else:
-                trend = "stable"
-                trend_icon = "📊"
-                trend_color = "#ffc107"
-                suggestion = "**MAINTAIN CURRENT LEVELS** - Forecast shows stable demand. Continue with current inventory management."
-                action = "Monitor market trends and maintain steady production."
-
-            # Display suggestions
+            trend_icon = "📈" if trend_pct > 5 else "📉" if trend_pct < -5 else "➡️"
+            trend_color = "#27ae60" if trend_pct > 5 else "#e74c3c" if trend_pct < -5 else "#f39c12"
+            
             st.markdown(f"""
-                <div style="background: linear-gradient(135deg, {trend_color}15 0%, {trend_color}05 100%); 
-                     border-left: 5px solid {trend_color}; padding: 2rem; border-radius: 10px; margin: 2rem 0;">
-                    <h3 style="color: {trend_color}; font-size: 1.8rem; margin-bottom: 1rem;">
-                        {trend_icon} Business Intelligence Recommendations
-                    </h3>
-                    <div style="font-size: 1.3rem; color: #333; margin-bottom: 1rem; font-weight: 600;">
-                        {suggestion}
-                    </div>
-                    <div style="font-size: 1.1rem; color: #666; margin-bottom: 1rem;">
-                        <strong>Manufacturing Guidance:</strong> {action}
-                    </div>
-                    <div style="font-size: 1rem; color: #888; border-top: 1px solid #eee; padding-top: 1rem;">
-                        <strong>Trend Analysis:</strong> Future forecast average: {future_forecast_avg:.1f} units 
-                        vs Recent average: {recent_sales:.1f} units ({((future_forecast_avg/recent_sales - 1) * 100):+.1f}% change)
-                    </div>
-                </div>
+            <div class="metric-card" style="border-left: 5px solid {trend_color};">
+                <div class="metric-title">{trend_icon} Sales Trend</div>
+                <div class="metric-value" style="color: {trend_color};">{trend_pct:+.1f}%</div>
+                <small>Recent vs Overall Average</small>
+            </div>
             """, unsafe_allow_html=True)
-        else:
-            st.error("❌ Not enough data to generate forecast for this product.")
-            st.info("💡 Try selecting a product with more historical sales data.")
+        
+        with col2:
+            # Forecast confidence card
+            future_data = forecast[forecast['ds'] > actual_df['ds'].max()]
+            if not future_data.empty:
+                avg_confidence_range = ((future_data['yhat_upper'] - future_data['yhat_lower']) / future_data['yhat'] * 100).mean()
+                confidence_score = max(0, 100 - avg_confidence_range)
+                
+                confidence_icon = "🎯" if confidence_score > 70 else "⚠️" if confidence_score > 40 else "❓"
+                confidence_color = "#27ae60" if confidence_score > 70 else "#f39c12" if confidence_score > 40 else "#e74c3c"
+                
+                st.markdown(f"""
+                <div class="metric-card" style="border-left: 5px solid {confidence_color};">
+                    <div class="metric-title">{confidence_icon} Forecast Confidence</div>
+                    <div class="metric-value" style="color: {confidence_color};">{confidence_score:.0f}%</div>
+                    <small>Model Prediction Accuracy</small>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Performance metrics table
+        st.markdown("### 📈 Performance Metrics")
+        
+        # Calculate additional metrics
+        volatility = actual_df['y'].std() / actual_df['y'].mean() * 100 if actual_df['y'].mean() > 0 else 0
+        growth_rate = ((actual_df['y'].iloc[-1] - actual_df['y'].iloc[0]) / actual_df['y'].iloc[0] * 100) if actual_df['y'].iloc[0] > 0 else 0
+        
+        metrics_df = pd.DataFrame({
+            'Metric': [
+                'Total Sales Volume',
+                'Average Monthly Sales',
+                'Sales Volatility',
+                'Growth Rate',
+                'Peak Sales',
+                'Low Sales',
+                'Revenue per Unit'
+            ],
+            'Value': [
+                f"{total_qty:,} units",
+                f"{actual_df['y'].mean():.0f} units",
+                f"{volatility:.1f}%",
+                f"{growth_rate:+.1f}%",
+                f"{actual_df['y'].max():.0f} units",
+                f"{actual_df['y'].min():.0f} units",
+                f"₹{avg_price:.2f}"
+            ]
+        })
+        
+        st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+        
+    else:
+        st.error("❌ Unable to generate forecast. Insufficient data for the selected product.")
+        st.info("💡 Try selecting a different product or adjusting the frequency settings.")
 
-# Mobile-optimized data viewer
-with st.expander("📋 View Raw Data", expanded=False):
-    st.markdown("### Filtered Dataset Preview")
-    
-    # Show data in mobile-friendly format
-    display_cols = ['Date', 'Description', 'qty', 'TaxableAmount']
-    mobile_df = filtered_df[display_cols].head(50)
-    
-    st.dataframe(
-        mobile_df,
-        use_container_width=True,
-        hide_index=True
-    )
-    
-    if len(filtered_df) > 50:
-        st.info(f"Showing first 50 of {len(filtered_df)} total records.")
+else:
+    st.info("📝 Please select a product to view its sales forecast and analysis.")
 
-# Footer for mobile
+# Footer
+st.markdown("---")
 st.markdown("""
-    <div style="text-align: center; padding: 2rem 0; color: #666; border-top: 1px solid #e0e0e0; margin-top: 2rem;">
-        <p>📱 Mobile-optimized Sales Forecasting Dashboard</p>
-        <p style="font-size: 0.8rem;">Swipe left to access filters • Tap charts to zoom</p>
-    </div>
+<div style="text-align: center; color: #7f8c8d; padding: 2rem;">
+    <p>📊 Sales Forecasting Dashboard | Built with Streamlit & Python</p>
+    <p>💡 <em>Empowering data-driven inventory decisions</em></p>
+</div>
 """, unsafe_allow_html=True)
+
+# Add some JavaScript for enhanced interactivity
+st.markdown("""
+<script>
+// Add smooth scrolling
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+            behavior: 'smooth'
+        });
+    });
+});
+
+// Add fade-in animation for cards
+const cards = document.querySelectorAll('.metric-card, .recommendation-card');
+cards.forEach((card, index) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+        card.style.transition = 'all 0.6s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+    }, index * 100);
+});
+</script>
+""", unsafe_allow_html=True)
+        
