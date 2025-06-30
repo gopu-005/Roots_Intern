@@ -227,10 +227,6 @@ def load_data():
     df.dropna(subset=['Date'], inplace=True)
     return df
 
-def get_top_products(df, top_n=75):
-    top_products = df.groupby('Description')['qty'].sum().sort_values(ascending=False).head(top_n).index.tolist()
-    return df[df['Description'].isin(top_products)]
-
 def forecast_sales(df, product_name, freq):
     df = df[df['Description'] == product_name].copy()
     df = df.set_index('Date').resample(freq)['qty'].sum().reset_index()
@@ -265,6 +261,35 @@ def forecast_sales(df, product_name, freq):
 
     df_forecast = pd.concat([df[['ds', 'y']].rename(columns={'y': 'yhat'}), forecast_df], ignore_index=True)
     return model, df_forecast, df[['ds', 'y']]
+
+def calculate_category_trend(df, category, freq):
+    """Calculate category trend performance"""
+    category_df = df[df['CategoryCode'] == category].copy()
+    
+    if category_df.empty:
+        return 0, "⚠️", "#ffc107"
+    
+    # Group by frequency to get trend data
+    category_df = category_df.set_index('Date').resample(freq)['qty'].sum().reset_index()
+    category_df.columns = ['Date', 'qty']
+    category_df.dropna(inplace=True)
+    
+    if len(category_df) < 2:
+        return 0, "⚠️", "#ffc107"
+    
+    # Calculate trend
+    recent_sales = category_df['qty'].iloc[-min(3, len(category_df)):].mean()
+    earlier_sales = category_df['qty'].iloc[:-min(3, len(category_df))].mean() if len(category_df) > 3 else category_df['qty'].iloc[0]
+    
+    trend_change = ((recent_sales - earlier_sales) / earlier_sales * 100) if earlier_sales > 0 else 0
+    
+    # Determine symbol and color based on trend
+    if trend_change > 15:
+        return trend_change, "▲", "#27ae60"  # Green triangle up
+    elif trend_change < -15:
+        return trend_change, "▼", "#e74c3c"  # Red triangle down
+    else:
+        return trend_change, "◆", "#f39c12"  # Yellow diamond for neutral
 
 def analyze_trend_and_recommend(actual_df, forecast_df):
     """Analyze sales trend and provide stock recommendations"""
@@ -333,13 +358,13 @@ def get_product_analysis(df, product_name, freq):
     earlier_sales = product_df['qty'].iloc[:-min(3, len(product_df))].mean() if len(product_df) > 3 else product_df['qty'].iloc[0]
     trend_change = ((recent_sales - earlier_sales) / earlier_sales * 100) if earlier_sales > 0 else 0
     
-    # Generate suggestion
+    # Generate detailed suggestion with monthly insights
     if trend_change > 15:
-        suggestion = "Increase Stock"
+        suggestion = f"Increase Stock - Best months: {highest_month}, Avoid: {lowest_month}"
     elif trend_change < -15:
-        suggestion = "Reduce Stock"
+        suggestion = f"Reduce Stock - Peak was: {highest_month}, Lowest: {lowest_month}"
     else:
-        suggestion = "Maintain Current Stock"
+        suggestion = f"Maintain Stock - Stable demand, Peak: {highest_month}"
     
     return {
         'product_name': product_name,
@@ -351,78 +376,97 @@ def get_product_analysis(df, product_name, freq):
         'suggestion': suggestion
     }
 
-def generate_comprehensive_pdf_report(df, location, category, freq):
-    """Generate comprehensive PDF report for all products in the category"""
-    from fpdf import FPDF
+def generate_comprehensive_excel_report(df, location, category, freq):
+    """Generate comprehensive Excel report for all products in the category"""
     
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=16)
+    # Create a BytesIO object to store the Excel file
+    output = BytesIO()
     
-    # Title
-    title = f"{location} - {category}" if location != 'ALL' else f"ALL LOCATIONS - {category}"
-    pdf.cell(200, 15, txt=title, ln=True, align='C')
-    pdf.ln(10)
+    # Create Excel writer object
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        
+        # Get all products in the category
+        products = sorted(df['Description'].unique())
+        
+        # Create the main data for the report
+        report_data = []
+        
+        for product in products:
+            analysis = get_product_analysis(df, product, freq)
+            if analysis:
+                report_data.append({
+                    'Product Name': analysis['product_name'],
+                    'Total Units Sold': analysis['total_units'],
+                    'Highest Sold (Units)': analysis['highest_sold'],
+                    'Best Performance Month': analysis['highest_month'],
+                    'Lowest Sold (Units)': analysis['lowest_sold'],
+                    'Lowest Performance Month': analysis['lowest_month'],
+                    'Stock Suggestion': analysis['suggestion']
+                })
+        
+        # Convert to DataFrame
+        report_df = pd.DataFrame(report_data)
+        
+        # Write to Excel
+        report_df.to_excel(writer, sheet_name='Sales Analysis', index=False)
+        
+        # Get the workbook and worksheet for formatting
+        workbook = writer.book
+        worksheet = writer.sheets['Sales Analysis']
+        
+        # Add formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'text_wrap': True,
+            'valign': 'top',
+            'fg_color': '#3498db',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        cell_format = workbook.add_format({
+            'text_wrap': True,
+            'valign': 'top',
+            'border': 1
+        })
+        
+        # Apply header format
+        for col_num, value in enumerate(report_df.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+        
+        # Apply cell format and adjust column widths
+        for col_num, column in enumerate(report_df.columns):
+            max_length = max(
+                report_df[column].astype(str).map(len).max(),
+                len(str(column))
+            )
+            worksheet.set_column(col_num, col_num, min(max_length + 2, 50))
+        
+        # Add a summary sheet
+        summary_data = {
+            'Report Details': [
+                'Location', 'Category', 'Total Products Analyzed', 
+                'Report Generated', 'Analysis Frequency'
+            ],
+            'Values': [
+                location if location != 'ALL' else 'All Locations',
+                category,
+                len(products),
+                pd.Timestamp.now().strftime('%Y-%m-%d %H:%M'),
+                freq
+            ]
+        }
+        
+        summary_df = pd.DataFrame(summary_data)
+        summary_df.to_excel(writer, sheet_name='Report Summary', index=False)
+        
+        # Format summary sheet
+        summary_worksheet = writer.sheets['Report Summary']
+        summary_worksheet.set_column(0, 0, 25)
+        summary_worksheet.set_column(1, 1, 30)
     
-    # Table headers
-    pdf.set_font("Arial", size=10)
-    pdf.cell(40, 10, "Product Name", 1, 0, 'C')
-    pdf.cell(25, 10, "Total Units", 1, 0, 'C')
-    pdf.cell(25, 10, "Highest Sold", 1, 0, 'C')
-    pdf.cell(25, 10, "High Month", 1, 0, 'C')
-    pdf.cell(25, 10, "Lowest Sold", 1, 0, 'C')
-    pdf.cell(25, 10, "Low Month", 1, 0, 'C')
-    pdf.cell(35, 10, "Stock Suggestion", 1, 1, 'C')
-    
-    # Get all products in the category
-    products = sorted(df['Description'].unique())
-    
-    for product in products:
-        analysis = get_product_analysis(df, product, freq)
-        if analysis:
-            # Check if we need a new page
-            if pdf.get_y() > 250:
-                pdf.add_page()
-                # Repeat headers
-                pdf.set_font("Arial", size=10)
-                pdf.cell(40, 10, "Product Name", 1, 0, 'C')
-                pdf.cell(25, 10, "Total Units", 1, 0, 'C')
-                pdf.cell(25, 10, "Highest Sold", 1, 0, 'C')
-                pdf.cell(25, 10, "High Month", 1, 0, 'C')
-                pdf.cell(25, 10, "Lowest Sold", 1, 0, 'C')
-                pdf.cell(25, 10, "Low Month", 1, 0, 'C')
-                pdf.cell(35, 10, "Stock Suggestion", 1, 1, 'C')
-            
-            # Add product data
-            pdf.set_font("Arial", size=8)
-            product_name = clean_text_for_pdf(analysis['product_name'])[:25]  # Truncate long names
-            pdf.cell(40, 10, product_name, 1, 0, 'L')
-            pdf.cell(25, 10, f"{analysis['total_units']:,}", 1, 0, 'C')
-            pdf.cell(25, 10, f"{analysis['highest_sold']:,}", 1, 0, 'C')
-            pdf.cell(25, 10, analysis['highest_month'], 1, 0, 'C')
-            pdf.cell(25, 10, f"{analysis['lowest_sold']:,}", 1, 0, 'C')
-            pdf.cell(25, 10, analysis['lowest_month'], 1, 0, 'C')
-            pdf.cell(35, 10, analysis['suggestion'], 1, 1, 'C')
-    
-    # Add summary at the end
-    pdf.ln(10)
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, f"Total Products Analyzed: {len(products)}", ln=True)
-    pdf.cell(200, 10, f"Report Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
-    
-    # FIXED: Return the PDF as BytesIO object
-    try:
-        pdf_output = pdf.output(dest='S')
-        return BytesIO(pdf_output.encode('latin-1'))
-    except UnicodeEncodeError:
-        # Fallback for encoding issues
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt=f"Sales Report - {title}", ln=True, align='C')
-        pdf.cell(200, 10, txt=f"Report generated successfully for {len(products)} products", ln=True)
-        pdf_output = pdf.output(dest='S')
-        return BytesIO(pdf_output.encode('latin-1'))
+    output.seek(0)
+    return output
 
 def generate_pdf_report(product_name, summary, fig):
     """Generate individual product PDF report"""
@@ -486,8 +530,7 @@ def generate_pdf_report(product_name, summary, fig):
 def load_and_process_data():
     df = load_data()
     df = df[df['CategoryCode'].str.lower() != 'vegetables']
-    top_products = df.groupby('Description')['qty'].sum().sort_values(ascending=False).head(75).index.tolist()
-    df = df[df['Description'].isin(top_products)]
+    # Removed the top 75 filter - now returns all products
     return df
 
 # Main app
@@ -534,11 +577,6 @@ with st.sidebar:
     st.markdown("**📅 Frequency Selection**")
     freq_option = st.selectbox("Select Frequency", ["Monthly", "Quarterly", "Yearly"], label_visibility="collapsed")
     
-    # Additional filters
-    st.markdown("---")
-    st.markdown("**🔢 Analysis Settings**")
-    top_n_products = st.slider("Number of Top Products", min_value=10, max_value=100, value=75, step=5)
-    
     # Comprehensive report download button
     st.markdown("---")
     st.markdown("**📋 Comprehensive Report**")
@@ -553,15 +591,15 @@ with st.sidebar:
     freq = freq_map[freq_option]
     
     if st.button("📥 Download Category Report", type="primary"):
-        with st.spinner("Generating comprehensive report..."):
-            comprehensive_pdf = generate_comprehensive_pdf_report(report_df, location, category, freq)
-            report_title = f"{location}_{category}_Report.pdf" if location != 'ALL' else f"ALL_LOCATIONS_{category}_Report.pdf"
+        with st.spinner("Generating comprehensive Excel report..."):
+            excel_report = generate_comprehensive_excel_report(report_df, location, category, freq)
+            report_title = f"{location}_{category}_Report.xlsx" if location != 'ALL' else f"ALL_LOCATIONS_{category}_Report.xlsx"
             
             st.download_button(
-                label="📄 Download Complete Report",
-                data=comprehensive_pdf,
+                label="📊 Download Excel Report",
+                data=excel_report,
                 file_name=report_title,
-                mime="application/pdf",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="comprehensive_report"
             )
 
@@ -574,10 +612,7 @@ if location == 'ALL':
 else:
     filtered_df = df[(df['CategoryCode'] == category) & (df['LocationCode'] == location)]
 
-# Get top products based on slider
-top_products = filtered_df.groupby('Description')['qty'].sum().sort_values(ascending=False).head(top_n_products).index.tolist()
-filtered_df = filtered_df[filtered_df['Description'].isin(top_products)]
-
+# Get all products for the selected category and location (no limit)
 products = sorted(filtered_df['Description'].unique())
 
 st.markdown("**🛍️ Product Selection**")
@@ -588,8 +623,10 @@ if product_selected:
     product_data = filtered_df[filtered_df['Description'] == product_selected]
     total_qty = product_data['qty'].sum()
     total_amount = product_data['TaxableAmount'].sum()
-    avg_price = total_amount / total_qty if total_qty > 0 else 0
     total_products = len(filtered_df['Description'].unique())
+    
+    # Calculate category trend
+    trend_value, trend_symbol, trend_color = calculate_category_trend(filtered_df, category, freq)
     
     # Display metrics cards
     col1, col2, col3, col4 = st.columns(4)
@@ -621,8 +658,10 @@ if product_selected:
     with col4:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">💲 Average Price</div>
-            <div class="metric-value">₹{avg_price:.2f}</div>
+            <div class="metric-title">📈 Category Trend</div>
+            <div class="metric-value" style="color: {trend_color};">
+                <span style="font-size: 2rem;">{trend_symbol}</span> {trend_value:.1f}%
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -661,16 +700,11 @@ if product_selected:
             ax.annotate("📈 Peak", (max_point['ds'], max_point['y']), 
                        textcoords="offset points", xytext=(0,20), ha='center', 
                        fontsize=11, fontweight='bold', color='#27ae60',
-                       bbox=dict(boxstyle='round,pad=0.3', edgecolor='#27ae60', facecolor='white'))
-            # Continuing from the plotting section...
-        ax.annotate("📈 Peak", (max_point['ds'], max_point['y']), 
-                   textcoords="offset points", xytext=(0,20), ha='center', 
-                   fontsize=11, fontweight='bold', color='#27ae60',
-                   bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
-        ax.annotate("📉 Low", (min_point['ds'], min_point['y']), 
-                   textcoords="offset points", xytext=(0,-30), ha='center', 
-                   fontsize=11, fontweight='bold', color='#e74c3c',
-                   bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
+            ax.annotate("📉 Low", (min_point['ds'], min_point['y']), 
+                       textcoords="offset points", xytext=(0,-30), ha='center', 
+                       fontsize=11, fontweight='bold', color='#e74c3c',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
 
         # Styling
         ax.set_xlabel('Date', fontsize=14, fontweight='bold', color='#2c3e50')
@@ -704,146 +738,142 @@ if product_selected:
         </div>
         """, unsafe_allow_html=True)
         
-        # Create summary for PDF
-        summary = {
+        # Generate summary for PDF
+        forecast_summary = {
             "Product": product_selected,
             "Category": category,
             "Location": location if location != 'ALL' else 'All Locations',
             "Analysis Period": f"{actual_df['ds'].min().strftime('%Y-%m')} to {actual_df['ds'].max().strftime('%Y-%m')}",
-            "Total Quantity Sold": f"{total_qty:,} units",
-            "Total Revenue": f"₹{total_amount:,.2f}",
-            "Average Price per Unit": f"₹{avg_price:.2f}",
-            "Highest Sales Month": f"{actual_df.loc[actual_df['y'].idxmax(), 'ds'].strftime('%Y-%m')} ({actual_df['y'].max():.0f} units)",
-            "Lowest Sales Month": f"{actual_df.loc[actual_df['y'].idxmin(), 'ds'].strftime('%Y-%m')} ({actual_df['y'].min():.0f} units)",
-            "Stock Recommendation": clean_text_for_pdf(recommendation)
+            "Total Units Sold": f"{total_qty:,}",
+            # "Average Price per Unit": f"₹{avg_price:.2f}",
+            "Peak Sales": f"{actual_df['y'].max():.0f} units in {actual_df.loc[actual_df['y'].idxmax(), 'ds'].strftime('%Y-%m')}",
+            "Lowest Sales": f"{actual_df['y'].min():.0f} units in {actual_df.loc[actual_df['y'].idxmin(), 'ds'].strftime('%Y-%m')}",
+            "Next Period Forecast": f"{forecast[forecast['ds'] > actual_df['ds'].max()]['yhat'].iloc[0]:.0f} units" if not forecast[forecast['ds'] > actual_df['ds'].max()].empty else "N/A",
+            "Recommendation": clean_text_for_pdf(recommendation),
+            "Analysis Frequency": freq_option,
+            "Report Generated": pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         
-        # Download individual product report
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("📥 Download Product Report", type="primary", use_container_width=True):
-                with st.spinner("Generating PDF report..."):
-                    pdf_buffer = generate_pdf_report(product_selected, summary, fig)
-                    st.download_button(
-                        label="📄 Download PDF Report",
-                        data=pdf_buffer,
-                        file_name=f"{product_selected.replace('/', '_')}_forecast_report.pdf",
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
-        
-        # Additional insights section
+        # Download buttons
         st.markdown("---")
-        st.markdown("### 📊 Additional Insights")
-        
-        # Create insights cards
         col1, col2 = st.columns(2)
         
         with col1:
-            # Sales trend card
-            recent_avg = actual_df['y'].iloc[-min(3, len(actual_df)):].mean()
-            overall_avg = actual_df['y'].mean()
-            trend_pct = ((recent_avg - overall_avg) / overall_avg * 100) if overall_avg > 0 else 0
-            
-            trend_icon = "📈" if trend_pct > 5 else "📉" if trend_pct < -5 else "➡️"
-            trend_color = "#27ae60" if trend_pct > 5 else "#e74c3c" if trend_pct < -5 else "#f39c12"
-            
+            # PDF download
+            if st.button("📄 Generate PDF Report", type="primary"):
+                with st.spinner("Generating PDF report..."):
+                    pdf_buffer = generate_pdf_report(product_selected, forecast_summary, fig)
+                    st.download_button(
+                        label="📥 Download PDF Report",
+                        data=pdf_buffer,
+                        file_name=f"{product_selected}_forecast_report.pdf",
+                        mime="application/pdf",
+                        key="pdf_download"
+                    )
+        
+        with col2:
+            # Excel data download
+            if st.button("📊 Export Data to Excel", type="secondary"):
+                with st.spinner("Preparing Excel data..."):
+                    # Combine actual and forecast data
+                    excel_data = pd.merge(
+                        actual_df.rename(columns={'ds': 'Date', 'y': 'Actual_Sales'}),
+                        forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].rename(columns={
+                            'ds': 'Date', 'yhat': 'Forecasted_Sales', 
+                            'yhat_lower': 'Lower_Bound', 'yhat_upper': 'Upper_Bound'
+                        }),
+                        on='Date', how='outer'
+                    )
+                    
+                    # Create Excel buffer
+                    excel_buffer = BytesIO()
+                    with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+                        excel_data.to_excel(writer, sheet_name='Forecast Data', index=False)
+                        
+                        # Add summary sheet
+                        summary_df = pd.DataFrame(list(forecast_summary.items()), columns=['Metric', 'Value'])
+                        summary_df.to_excel(writer, sheet_name='Summary', index=False)
+                    
+                    excel_buffer.seek(0)
+                    
+                    st.download_button(
+                        label="📥 Download Excel Data",
+                        data=excel_buffer,
+                        file_name=f"{product_selected}_forecast_data.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="excel_download"
+                    )
+        
+        # Additional insights
+        st.markdown("---")
+        st.markdown("### 📈 Additional Insights")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
             st.markdown(f"""
-            <div class="metric-card" style="border-left: 5px solid {trend_color};">
-                <div class="metric-title">{trend_icon} Sales Trend</div>
-                <div class="metric-value" style="color: {trend_color};">{trend_pct:+.1f}%</div>
-                <small>Recent vs Overall Average</small>
+            <div class="metric-card">
+                <div class="metric-title">📊 Sales Trend</div>
+                <div class="metric-value" style="font-size: 1.5rem;">
+                    {"📈 Growing" if trend_type == "positive" else "📉 Declining" if trend_type == "negative" else "📊 Stable"}
+                </div>
             </div>
             """, unsafe_allow_html=True)
         
         with col2:
-            # Forecast confidence card
-            future_data = forecast[forecast['ds'] > actual_df['ds'].max()]
-            if not future_data.empty:
-                avg_confidence_range = ((future_data['yhat_upper'] - future_data['yhat_lower']) / future_data['yhat'] * 100).mean()
-                confidence_score = max(0, 100 - avg_confidence_range)
-                
-                confidence_icon = "🎯" if confidence_score > 70 else "⚠️" if confidence_score > 40 else "❓"
-                confidence_color = "#27ae60" if confidence_score > 70 else "#f39c12" if confidence_score > 40 else "#e74c3c"
-                
-                st.markdown(f"""
-                <div class="metric-card" style="border-left: 5px solid {confidence_color};">
-                    <div class="metric-title">{confidence_icon} Forecast Confidence</div>
-                    <div class="metric-value" style="color: {confidence_color};">{confidence_score:.0f}%</div>
-                    <small>Model Prediction Accuracy</small>
+            volatility = actual_df['y'].std() / actual_df['y'].mean() * 100 if actual_df['y'].mean() > 0 else 0
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-title">📉 Sales Volatility</div>
+                <div class="metric-value" style="font-size: 1.5rem;">
+                    {volatility:.1f}%
                 </div>
-                """, unsafe_allow_html=True)
+            </div>
+            """, unsafe_allow_html=True)
         
-        # Performance metrics table
-        st.markdown("### 📈 Performance Metrics")
+        with col3:
+            growth_rate = ((actual_df['y'].iloc[-1] - actual_df['y'].iloc[0]) / actual_df['y'].iloc[0] * 100) if len(actual_df) > 1 and actual_df['y'].iloc[0] > 0 else 0
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-title">📈 Overall Growth</div>
+                <div class="metric-value" style="font-size: 1.5rem; color: {'#27ae60' if growth_rate > 0 else '#e74c3c'};">
+                    {growth_rate:+.1f}%
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
-        # Calculate additional metrics
-        volatility = actual_df['y'].std() / actual_df['y'].mean() * 100 if actual_df['y'].mean() > 0 else 0
-        growth_rate = ((actual_df['y'].iloc[-1] - actual_df['y'].iloc[0]) / actual_df['y'].iloc[0] * 100) if actual_df['y'].iloc[0] > 0 else 0
-        
-        metrics_df = pd.DataFrame({
-            'Metric': [
-                'Total Sales Volume',
-                'Average Monthly Sales',
-                'Sales Volatility',
-                'Growth Rate',
-                'Peak Sales',
-                'Low Sales',
-                'Revenue per Unit'
-            ],
-            'Value': [
-                f"{total_qty:,} units",
-                f"{actual_df['y'].mean():.0f} units",
-                f"{volatility:.1f}%",
-                f"{growth_rate:+.1f}%",
-                f"{actual_df['y'].max():.0f} units",
-                f"{actual_df['y'].min():.0f} units",
-                f"₹{avg_price:.2f}"
-            ]
-        })
-        
-        st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+        # Seasonal analysis (if monthly data)
+        if freq_option == "Monthly" and len(actual_df) >= 12:
+            st.markdown("### 🗓️ Seasonal Analysis")
+            actual_df['Month'] = actual_df['ds'].dt.month
+            monthly_avg = actual_df.groupby('Month')['y'].mean().sort_values(ascending=False)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**🏆 Top Performing Months:**")
+                for i, (month, avg_sales) in enumerate(monthly_avg.head(3).items()):
+                    month_name = pd.Timestamp(2024, month, 1).strftime('%B')
+                    st.markdown(f"**{i+1}.** {month_name}: {avg_sales:.0f} units")
+            
+            with col2:
+                st.markdown("**📉 Lowest Performing Months:**")
+                for i, (month, avg_sales) in enumerate(monthly_avg.tail(3).items()):
+                    month_name = pd.Timestamp(2024, month, 1).strftime('%B')
+                    st.markdown(f"**{i+1}.** {month_name}: {avg_sales:.0f} units")
         
     else:
         st.error("❌ Unable to generate forecast. Insufficient data for the selected product.")
         st.info("💡 Try selecting a different product or adjusting the frequency settings.")
 
 else:
-    st.info("📝 Please select a product to view its sales forecast and analysis.")
+    st.info("👆 Please select a product from the sidebar to view its sales forecast.")
 
 # Footer
 st.markdown("---")
 st.markdown("""
-<div style="text-align: center; color: #7f8c8d; padding: 2rem;">
-    <p>📊 Sales Forecasting Dashboard | Built with Streamlit & Python</p>
-    <p>💡 <em>Empowering data-driven inventory decisions</em></p>
+<div style="text-align: center; color: #7f8c8d; font-size: 0.9rem; margin-top: 2rem;">
+    <p>📊 <strong>Sales Forecasting Dashboard</strong> | Built with Streamlit & Machine Learning</p>
+    <p>🔬 Powered by Linear Regression | 📈 Real-time Analytics</p>
 </div>
 """, unsafe_allow_html=True)
-
-# Add some JavaScript for enhanced interactivity
-st.markdown("""
-<script>
-// Add smooth scrolling
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        document.querySelector(this.getAttribute('href')).scrollIntoView({
-            behavior: 'smooth'
-        });
-    });
-});
-
-// Add fade-in animation for cards
-const cards = document.querySelectorAll('.metric-card, .recommendation-card');
-cards.forEach((card, index) => {
-    card.style.opacity = '0';
-    card.style.transform = 'translateY(20px)';
-    setTimeout(() => {
-        card.style.transition = 'all 0.6s ease';
-        card.style.opacity = '1';
-        card.style.transform = 'translateY(0)';
-    }, index * 100);
-});
-</script>
-""", unsafe_allow_html=True)
-        
