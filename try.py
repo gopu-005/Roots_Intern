@@ -661,8 +661,8 @@ st.set_page_config(page_title="Sales Forecasting Dashboard", layout="wide", init
 # Load custom CSS
 load_css()
 
-# Title
-st.markdown('<h1 class="main-title">📊 Sales Forecasting Dashboard</h1>', unsafe_allow_html=True)
+# Title 📊 
+st.markdown('<h1 class="main-title"> Veyr Organics Forecasting Dashboard</h1>', unsafe_allow_html=True)
 
 # Sidebar with custom styling and hamburger menu
 if 'sidebar_state' not in st.session_state:
